@@ -8,57 +8,45 @@ const axios = require("axios");
 const crypto = require("crypto");
 require("dotenv").config();
 
-// Schedule engagement update script to run at 13:30 and 20:00 daily
-const cron = require('node-cron');
-const { exec } = require('child_process');
+const cron = require("node-cron");
+const { exec } = require("child_process");
 
-process.env.TZ = 'Asia/Jerusalem';
+process.env.TZ = "Asia/Jerusalem";
 
-cron.schedule('30 13,20 * * *', () => {
-  console.log('🕒 Running engagement update script (13:30 or 20:00)');
-  exec('node ./scripts/update_engagement_metrics.js', (err, stdout, stderr) => {
-    if (err) {
-      console.error('❌ Script error:', err.message);
-    } else {
-      console.log(stdout);
-    }
+cron.schedule("30 13,20 * * *", () => {
+  console.log("🕒 Running engagement update script (13:30 or 20:00)");
+  exec("node ./scripts/update_engagement_metrics.js", (err, stdout) => {
+    if (err) console.error("❌ Script error:", err.message);
+    else console.log(stdout);
   });
 });
 
-// Initialize Express app
 const app = express();
 const port = process.env.PORT || 3000;
 
-// If behind a proxy, enable trust proxy
+// trust proxy (needed for correct HTTPS cookie behavior behind Railway)
 app.set("trust proxy", 1);
 
-// Middleware
+// ---------- Parsers ----------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- Health checks (before DB/routes so Railway is happy even during startup) ---
+// ---------- Health checks (keep these BEFORE any async work) ----------
 app.get("/", (req, res) => res.status(200).send("OK"));
 app.get("/healthz", (req, res) => res.status(200).json({ ok: true }));
 
-// --- CORS (env-driven) ---
-const raw = process.env.ALLOWED_ORIGINS || "http://localhost:5173";
-const allowed = raw.split(",").map(s => s.trim()).filter(Boolean); // NO trailing slashes
-app.use(
-  cors({
-    origin(origin, cb) {
-      // allow same-origin/no Origin (curl/health) and the listed origins
-      if (!origin || allowed.includes(origin)) return cb(null, true);
-      return cb(new Error(`CORS blocked: ${origin}`));
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
-// ✅ never let preflights 405
-app.options("*", cors());
+const allowed = ["http://localhost:5173", "https://YOUR-FRONTEND-DOMAIN"];
+const corsMiddleware = cors({
+  origin: (origin, cb) => (!origin || allowed.includes(origin) ? cb(null, true) : cb(new Error("CORS blocked"))),
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"],
+  credentials: true,
+});
 
-// Setup session middleware
+app.use(corsMiddleware);
+app.options("*", corsMiddleware);              // <- critical so OPTIONS never 405s
+
+// ---------- Session ----------
 app.use(
   session({
     secret:
@@ -67,23 +55,20 @@ app.use(
     resave: false,
     saveUninitialized: true,
     cookie: {
-      secure: false, // requires HTTPS
-      sameSite: "lax", // allows cross-site cookies
+      // Keep your current settings (work in both http local & https prod)
+      secure: false,
+      sameSite: "lax",
     },
   })
 );
 
+// (optional) request logger
 app.use((req, res, next) => {
-  console.log("🔑 Session now:", req.session);
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();
 });
 
-router.use((req, res, next) => {
-  console.log('authRouter received:', req.method, req.path);
-  next();
-});
-
-// Import Routes
+// ---------- Routes ----------
 const authRouter = require("./routes/authRoute");
 const twitterRouter = require("./routes/twitter");
 const agendasRouter = require("./routes/agendas");
@@ -91,18 +76,15 @@ const { router: uploadRouter } = require("./routes/uploadRoute");
 const agendaInstance = require("./agenda/agendaInstance");
 const loadJobs = require("./agenda/loadJobs");
 
-// Initialize the Server
+// ---------- Init ----------
 const initApp = async () => {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is not set");
   }
 
   try {
-    await mongoose.connect(process.env.DATABASE_URL,
-      {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-      });
+    // Remove deprecated flags
+    await mongoose.connect(process.env.DATABASE_URL);
     console.log("✅ Connected to Database");
 
     app.use("/uploads", express.static(path.join(__dirname, "./uploads")));
@@ -112,8 +94,7 @@ const initApp = async () => {
     app.use("/api/uploads", uploadRouter);
     app.use("/api/agendas", agendasRouter);
 
-    
-    // OAuth2 PKCE helpers
+    // ---- OAuth2 PKCE helpers
     const querystring = require("querystring");
     function generateCodeVerifier() {
       return crypto.randomBytes(32).toString("hex");
@@ -191,7 +172,6 @@ const initApp = async () => {
         res.send(
           `<h1>Twitter Connected!</h1><p>You can now close this window and start promoting.</p>`
         );
-
       } catch (e) {
         console.error("Error exchanging token:", e.response?.data || e);
         res.status(500).send("OAuth token exchange failed.");
@@ -208,6 +188,5 @@ const initApp = async () => {
     throw err;
   }
 };
-
 
 module.exports = initApp;
