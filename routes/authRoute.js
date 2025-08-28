@@ -4,6 +4,11 @@ const { upload } = require("./uploadRoute");
 
 const router = express.Router();
 
+router.use((req, res, next) => {
+  console.log('ROUTER:', req.method, req.path);
+  next();
+});
+
 // Register user (with optional profile picture)
 router.post("/register", upload.single("profilePicture"), authController.register);
 
