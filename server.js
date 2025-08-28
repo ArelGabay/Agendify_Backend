@@ -39,7 +39,7 @@ app.use(express.urlencoded({ extended: true }));
 // CORS Configuration
 app.use(
   cors({
-    origin: ["http://localhost:5173/", "https://agendifyx.up.railway.app/", "frontend.railway.internal"],
+    origin: ["http://localhost:5173/", "https://agendifyx.up.railway.app", "frontend.railway.internal"],
     methods: "GET, POST, PUT, DELETE, OPTIONS",
     allowedHeaders: "Content-Type, Authorization",
     credentials: true,
