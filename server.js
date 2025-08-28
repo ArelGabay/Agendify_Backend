@@ -68,6 +68,11 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((req, res, next) => {
+  console.log('MAIN:', req.method, req.url);
+  next();
+});
+
 // ---------- Routes ----------
 const authRouter = require("./routes/authRoute");
 const twitterRouter = require("./routes/twitter");
