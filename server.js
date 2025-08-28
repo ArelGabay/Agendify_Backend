@@ -36,15 +36,27 @@ app.set("trust proxy", 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS Configuration
+// --- Health checks (before DB/routes so Railway is happy even during startup) ---
+app.get("/", (req, res) => res.status(200).send("OK"));
+app.get("/healthz", (req, res) => res.status(200).json({ ok: true }));
+
+// --- CORS (env-driven) ---
+const raw = process.env.ALLOWED_ORIGINS || "http://localhost:5173";
+const allowed = raw.split(",").map(s => s.trim()).filter(Boolean); // NO trailing slashes
 app.use(
   cors({
-    origin: ["http://localhost:5173/", "https://agendifyx.up.railway.app", "frontend.railway.internal"],
-    methods: "GET, POST, PUT, DELETE, OPTIONS",
-    allowedHeaders: "Content-Type, Authorization",
+    origin(origin, cb) {
+      // allow same-origin/no Origin (curl/health) and the listed origins
+      if (!origin || allowed.includes(origin)) return cb(null, true);
+      return cb(new Error(`CORS blocked: ${origin}`));
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
+// ✅ never let preflights 405
+app.options("*", cors());
 
 // Setup session middleware
 app.use(
