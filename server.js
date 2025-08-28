@@ -35,7 +35,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => res.status(200).send("OK"));
 app.get("/healthz", (req, res) => res.status(200).json({ ok: true }));
 
-const allowed = ["http://localhost:5173", "https://YOUR-FRONTEND-DOMAIN"];
+const allowed = ["http://localhost:5173", "https://agendifyx.up.railway.app"];
 const corsMiddleware = cors({
   origin: (origin, cb) => (!origin || allowed.includes(origin) ? cb(null, true) : cb(new Error("CORS blocked"))),
   methods: ["GET","POST","PUT","DELETE","OPTIONS"],
@@ -45,6 +45,7 @@ const corsMiddleware = cors({
 
 app.use(corsMiddleware);
 app.options("*", corsMiddleware);              // <- critical so OPTIONS never 405s
+app.options("/api/*", corsMiddleware, (req, res) => res.sendStatus(204));
 
 // ---------- Session ----------
 app.use(
