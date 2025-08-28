@@ -78,6 +78,11 @@ app.use((req, res, next) => {
   next();
 });
 
+router.use((req, res, next) => {
+  console.log('authRouter received:', req.method, req.path);
+  next();
+});
+
 // Import Routes
 const authRouter = require("./routes/authRoute");
 const twitterRouter = require("./routes/twitter");
