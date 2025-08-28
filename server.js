@@ -121,7 +121,7 @@ const initApp = async () => {
       const params = {
         response_type: "code",
         client_id: process.env.CLIENT_ID,
-        redirect_uri: "http://localhost:3000/api/auth/twitter/callback2",
+        redirect_uri: "https://agendifyx.up.railway.app/api/auth/twitter/callback2",
         scope: "tweet.read tweet.write users.read",
         state,
         code_challenge: challenge,
@@ -150,7 +150,7 @@ const initApp = async () => {
             grant_type: "authorization_code",
             code,
             client_id: process.env.CLIENT_ID,
-            redirect_uri: "http://localhost:3000/api/auth/twitter/callback2",
+            redirect_uri: "https://agendifyx.up.railway.app/api/auth/twitter/callback2",
             code_verifier: verifier,
           }),
           {
