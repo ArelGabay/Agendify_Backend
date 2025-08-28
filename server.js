@@ -94,12 +94,6 @@ const initApp = async () => {
     console.log("✅ Connected to Database");
 
     app.use("/uploads", express.static(path.join(__dirname, "./uploads")));
-
-  // TEMP: prove POST /api/auth/login reaches Express
-app.post("/api/auth/login", (req, res) => {
-  console.log("TEMP /api/auth/login hit", req.body);
-  return res.status(200).json({ ok: true, temp: true });
-});
     
     app.use("/api/auth", authRouter);
     app.use("/api/twitter", twitterRouter);
